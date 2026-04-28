@@ -58,11 +58,12 @@ uint16_t cfg_pwm_freq = PWM_FREQ_DEFAULT;
 //  编码器（中断，需 IRAM�?// ============================================================
 volatile long encoderCount  = 0;
 volatile long encoderCount2 = 0;
+volatile unsigned long isrCalls1 = 0, isrCalls2 = 0;
 
-void IRAM_ATTR encA_ISR()  { encoderCount  += (digitalRead(ENC_A)   != digitalRead(ENC_B))   ? 1 : -1; }
-void IRAM_ATTR encB_ISR()  { encoderCount  += (digitalRead(ENC_A)   == digitalRead(ENC_B))   ? 1 : -1; }
-void IRAM_ATTR encA2_ISR() { encoderCount2 += (digitalRead(ENC_A_2) != digitalRead(ENC_B_2)) ? 1 : -1; }
-void IRAM_ATTR encB2_ISR() { encoderCount2 += (digitalRead(ENC_A_2) == digitalRead(ENC_B_2)) ? 1 : -1; }
+void IRAM_ATTR encA_ISR()  { encoderCount  += (digitalRead(ENC_A)   != digitalRead(ENC_B))   ? 1 : -1; isrCalls1++; }
+void IRAM_ATTR encB_ISR()  { encoderCount  += (digitalRead(ENC_A)   == digitalRead(ENC_B))   ? 1 : -1; isrCalls1++; }
+void IRAM_ATTR encA2_ISR() { encoderCount2 += (digitalRead(ENC_A_2) != digitalRead(ENC_B_2)) ? 1 : -1; isrCalls2++; }
+void IRAM_ATTR encB2_ISR() { encoderCount2 += (digitalRead(ENC_A_2) == digitalRead(ENC_B_2)) ? 1 : -1; isrCalls2++; }
 
 // --- RPM 计算 ---
 unsigned long lastRpmTime = 0;
@@ -101,8 +102,8 @@ void initPWM() {
 }
 
 void initEncoders() {
-  pinMode(ENC_A,   INPUT); pinMode(ENC_B,   INPUT);
-  pinMode(ENC_A_2, INPUT); pinMode(ENC_B_2, INPUT);
+  pinMode(ENC_A,   INPUT_PULLUP); pinMode(ENC_B,   INPUT_PULLUP);
+  pinMode(ENC_A_2, INPUT_PULLUP); pinMode(ENC_B_2, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(ENC_A),   encA_ISR,  CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENC_B),   encB_ISR,  CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENC_A_2), encA2_ISR, CHANGE);
@@ -137,6 +138,8 @@ void loop() {
     float dt = (now - lastRpmTime) / 1000.0f;
     rpm1 = (int16_t)(((s1 - lastCnt1) / (float)cfg_ppr) / dt * 60.0f);
     rpm2 = (int16_t)(((s2 - lastCnt2) / (float)cfg_ppr) / dt * 60.0f);
+    if (rpm1 > -5 && rpm1 < 5) rpm1 = 0;
+    if (rpm2 > -5 && rpm2 < 5) rpm2 = 0;
     lastCnt1 = s1; lastCnt2 = s2;
     lastRpmTime = now;
   }
@@ -284,16 +287,21 @@ void handleCommand(uint8_t cmd, uint8_t *p, uint8_t len) {
       sendStatus();
       break;
 
-    case 0x30: {  // DEBUG: 读取编码器原始计数
+    case 0x30: {  // DEBUG: 编码器计数 + ISR 触发次数
       noInterrupts();
       long c1 = encoderCount, c2 = encoderCount2;
+      unsigned long i1 = isrCalls1, i2 = isrCalls2;
       interrupts();
-      uint8_t buf[8];
-      buf[0] = (uint8_t)(c1 >> 24); buf[1] = (uint8_t)(c1 >> 16);
-      buf[2] = (uint8_t)(c1 >> 8);  buf[3] = (uint8_t)(c1 & 0xFF);
-      buf[4] = (uint8_t)(c2 >> 24); buf[5] = (uint8_t)(c2 >> 16);
-      buf[6] = (uint8_t)(c2 >> 8);  buf[7] = (uint8_t)(c2 & 0xFF);
-      sendFrame(0x30, buf, 8);
+      uint8_t buf[16];
+      buf[0]  = (uint8_t)(c1 >> 24); buf[1]  = (uint8_t)(c1 >> 16);
+      buf[2]  = (uint8_t)(c1 >> 8);  buf[3]  = (uint8_t)(c1 & 0xFF);
+      buf[4]  = (uint8_t)(c2 >> 24); buf[5]  = (uint8_t)(c2 >> 16);
+      buf[6]  = (uint8_t)(c2 >> 8);  buf[7]  = (uint8_t)(c2 & 0xFF);
+      buf[8]  = (uint8_t)(i1 >> 24); buf[9]  = (uint8_t)(i1 >> 16);
+      buf[10] = (uint8_t)(i1 >> 8);  buf[11] = (uint8_t)(i1 & 0xFF);
+      buf[12] = (uint8_t)(i2 >> 24); buf[13] = (uint8_t)(i2 >> 16);
+      buf[14] = (uint8_t)(i2 >> 8);  buf[15] = (uint8_t)(i2 & 0xFF);
+      sendFrame(0x30, buf, 16);
       break;
     }
 

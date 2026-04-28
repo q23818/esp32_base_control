@@ -9,7 +9,7 @@ import struct
 import sys
 
 # ── 配置 ──────────────────────────────────────────────
-PORT     = "COM8"
+PORT     = "COM7"
 BAUD     = 115200
 TIMEOUT  = 1.0   # 秒
 
@@ -235,15 +235,23 @@ def test_get_rpm(ser, t):
     print(f"\n{INFO} ── 测试 GET_RPM ──")
     time.sleep(0.3)  # 让电机稳定（1:90减速比需要更长时间）
 
-    # 诊断：读取编码器原始计数
-    print(f"\n{INFO} ── 诊断：编码器原始计数 ──")
+    # 诊断：读取编码器原始计数 + ISR 触发次数
+    print(f"\n{INFO} ── 诊断：编码器 + ISR ──")
     ser.reset_input_buffer()
     ser.write(build_frame(0x30))
     resp = recv_frame(ser)
-    if resp and resp["cmd"] == 0x30 and len(resp["payload"]) >= 8:
+    if resp and resp["cmd"] == 0x30 and len(resp["payload"]) >= 16:
         c1 = struct.unpack(">l", resp["payload"][0:4])[0]
         c2 = struct.unpack(">l", resp["payload"][4:8])[0]
-        print(f"       M1 encoder count: {c1}  M2 encoder count: {c2}")
+        i1 = struct.unpack(">L", resp["payload"][8:12])[0]
+        i2 = struct.unpack(">L", resp["payload"][12:16])[0]
+        print(f"       M1 count={c1}  ISR={i1}  |  M2 count={c2}  ISR={i2}")
+        t.check("编码器有计数", c1 != 0 or c2 != 0, f"M1={c1}, M2={c2}")
+        t.check("ISR 有触发", i1 != 0 or i2 != 0, f"ISR1={i1}, ISR2={i2}")
+    elif resp and resp["cmd"] == 0x30 and len(resp["payload"]) >= 8:
+        c1 = struct.unpack(">l", resp["payload"][0:4])[0]
+        c2 = struct.unpack(">l", resp["payload"][4:8])[0]
+        print(f"       M1 count={c1}  M2 count={c2}  (旧固件，无 ISR 数据)")
         t.check("编码器有计数", c1 != 0 or c2 != 0, f"M1={c1}, M2={c2}")
     else:
         print(f"  {WARN} 无法读取编码器计数")
