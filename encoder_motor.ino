@@ -41,6 +41,11 @@
 #define ERR_INVALID_PARAM 0x03
 #define ERR_UNKNOWN_CMD   0x04
 
+// --- 双串口 ---
+// Serial  = USB CDC (GPIO18/19 USB口)
+// SerialUART0 = 硬件 UART0 (GPIO20 RX / GPIO21 TX)
+HardwareSerial SerialUART0(0);
+
 // --- 帧头 ---
 #define FRAME_H1  0xAA
 #define FRAME_H2  0x55
@@ -114,7 +119,8 @@ void initEncoders() {
 //  setup / loop
 // ============================================================
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(115200);                          // USB CDC
+  SerialUART0.begin(115200, SERIAL_8N1, 20, 21); // 硬件 UART0
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);  // 上电默认灭（active low）
   initPWM();
@@ -125,9 +131,12 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  // 接收串口数据
+  // 接收串口数据（双路）
   while (Serial.available()) {
     processByte((uint8_t)Serial.read());
+  }
+  while (SerialUART0.available()) {
+    processByte((uint8_t)SerialUART0.read());
   }
 
   // �?100ms 更新 RPM
@@ -323,12 +332,18 @@ void handleCommand(uint8_t cmd, uint8_t *p, uint8_t len) {
 void sendFrame(uint8_t cmd, uint8_t *payload, uint8_t len) {
   uint8_t chk = cmd ^ len;
   for (uint8_t i = 0; i < len; i++) chk ^= payload[i];
-  Serial.write(FRAME_H1);
-  Serial.write(FRAME_H2);
-  Serial.write(cmd);
-  Serial.write(len);
-  if (len > 0) Serial.write(payload, len);
-  Serial.write(chk);
+
+  uint8_t buf[64];
+  uint8_t idx = 0;
+  buf[idx++] = FRAME_H1;
+  buf[idx++] = FRAME_H2;
+  buf[idx++] = cmd;
+  buf[idx++] = len;
+  for (uint8_t i = 0; i < len; i++) buf[idx++] = payload[i];
+  buf[idx++] = chk;
+
+  Serial.write(buf, idx);       // USB CDC
+  SerialUART0.write(buf, idx);  // 硬件 UART0
 }
 
 void sendAck(uint8_t ackedCmd) {
