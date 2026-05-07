@@ -5,7 +5,7 @@
 
 // --- 编译配置（切换配置时修改这里） ---
 // #define CONFIG_ID  0   // 配置0：调试
-#define CONFIG_ID  1   // 配置1：生产
+#define CONFIG_ID  1   // 配置1：AKA-00
 
 // --- 引脚定义 ---
 #define LED_PIN    8
@@ -21,13 +21,13 @@
 #define ENC_A_2    7
 #define ENC_B_2   10
 #elif CONFIG_ID == 1
-// 配置1：生产引脚（默认）
+// 配置1：AKA-00
 #define IN1_PIN    4
 #define IN2_PIN    3
 #define ENC_A      5
 #define ENC_B      6
-#define IN1_PIN_2  1
-#define IN2_PIN_2  2
+#define IN1_PIN_2  2
+#define IN2_PIN_2  1
 #define ENC_A_2    7
 #define ENC_B_2   10
 #endif
