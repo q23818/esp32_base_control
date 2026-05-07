@@ -21,13 +21,13 @@
 #define ENC_A_2    7
 #define ENC_B_2   10
 #elif CONFIG_ID == 1
-// 配置1：AKA-00
-#define IN1_PIN    4
-#define IN2_PIN    3
+// 配置1：AKA-00（电机2方向反转）
+#define IN1_PIN    2
+#define IN2_PIN    1
 #define ENC_A      5
 #define ENC_B      6
-#define IN1_PIN_2  2
-#define IN2_PIN_2  1
+#define IN1_PIN_2  3
+#define IN2_PIN_2  4
 #define ENC_A_2    7
 #define ENC_B_2   10
 #endif
@@ -409,6 +409,11 @@ void motorBrake(uint8_t mid) {
 
 void motorForward(int s)  { analogWrite(IN1_PIN,   s); analogWrite(IN2_PIN,   0); }
 void motorReverse(int s)  { analogWrite(IN1_PIN,   0); analogWrite(IN2_PIN,   s); }
+#if CONFIG_ID == 0
 void motorForward2(int s) { analogWrite(IN1_PIN_2, s); analogWrite(IN2_PIN_2, 0); }
 void motorReverse2(int s) { analogWrite(IN1_PIN_2, 0); analogWrite(IN2_PIN_2, s); }
+#elif CONFIG_ID == 1
+void motorForward2(int s) { analogWrite(IN1_PIN_2, 0); analogWrite(IN2_PIN_2, s); }
+void motorReverse2(int s) { analogWrite(IN1_PIN_2, s); analogWrite(IN2_PIN_2, 0); }
+#endif
 
