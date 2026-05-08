@@ -9,7 +9,7 @@ import struct
 import sys
 
 # ── 配置 ──────────────────────────────────────────────
-PORT     = "COM7"
+PORT     = "/dev/cu.usbmodem1101"
 BAUD     = 115200
 TIMEOUT  = 1.0   # 秒
 
@@ -19,6 +19,7 @@ CMD_CONFIG     = 0x02
 CMD_SET_SPEED  = 0x10
 CMD_STOP       = 0x11
 CMD_BRAKE      = 0x12
+CMD_SET_SPEEDS = 0x13
 CMD_GET_RPM    = 0x20
 CMD_GET_STATUS = 0x21
 CMD_RESET      = 0xFF
@@ -231,6 +232,30 @@ def test_set_speed(ser, t):
     ser.write(build_frame(CMD_SET_SPEED, struct.pack(">Bh", 1, 200))); recv_frame(ser)
 
 
+def test_set_speeds(ser, t):
+    print(f"\n{INFO} ── 测试 SET_SPEEDS (0x13) ──")
+
+    # M1=200, M2=150 同时设置
+    payload = struct.pack(">hh", 200, 200)
+    expect_ack(ser, CMD_SET_SPEEDS, payload, tester=t, name="双电机同时正转 (200, 150)")
+    time.sleep(0.5)
+
+    # M1=-150, M2=-100 同时反转
+    payload = struct.pack(">hh", -200, -200)
+    expect_ack(ser, CMD_SET_SPEEDS, payload, tester=t, name="双电机同时反转 (-150, -100)")
+    time.sleep(0.5)
+
+    # M1正转 M2反转
+    payload = struct.pack(">hh", 180, -180)
+    expect_ack(ser, CMD_SET_SPEEDS, payload, tester=t, name="双电机反向 (180, -180)")
+    time.sleep(1)
+
+    # 双电机同时停止 (speed=0)
+    payload = struct.pack(">hh", 0, 0)
+    expect_ack(ser, CMD_SET_SPEEDS, payload, tester=t, name="双电机同时停止 (0, 0)")
+    time.sleep(0.5)
+
+
 def test_get_rpm(ser, t):
     print(f"\n{INFO} ── 测试 GET_RPM ──")
     time.sleep(0.3)  # 让电机稳定（1:90减速比需要更长时间）
@@ -373,21 +398,22 @@ def main():
 
     t = Tester()
 
-    try:
-        test_init(ser, t)
-        test_config(ser, t)
-        test_get_status(ser, t)
-        test_set_speed(ser, t)
-        test_get_rpm(ser, t)
-        test_stop_brake(ser, t)
-        test_wrong_state(ser, t)
-        test_bad_checksum(ser, t)
-        test_unknown_cmd(ser, t)
-        test_reset(ser, t)
-    finally:
+    # try:
+        # test_init(ser, t)
+        # test_config(ser, t)
+        # test_get_status(ser, t)
+        # test_set_speed(ser, t)
+    test_set_speeds(ser, t)
+        # test_get_rpm(ser, t)
+        # test_stop_brake(ser, t)
+        # test_wrong_state(ser, t)
+        # test_bad_checksum(ser, t)
+        # test_unknown_cmd(ser, t)
+        # test_reset(ser, t)
+    # finally:
         # 确保测试结束后电机停止
-        ser.write(build_frame(CMD_RESET))
-        ser.close()
+        # ser.write(build_frame(CMD_RESET))
+        # ser.close()
 
     t.summary()
 

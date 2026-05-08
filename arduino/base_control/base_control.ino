@@ -46,6 +46,7 @@
 #define CMD_BRAKE       0x12
 #define CMD_GET_RPM     0x20
 #define CMD_GET_STATUS  0x21
+#define CMD_SET_SPEEDS  0x13  // 新增：同时设置双电机速度
 #define CMD_RESET       0xFF
 
 // --- 协议：响应字 ---
@@ -279,6 +280,20 @@ void handleCommand(uint8_t cmd, uint8_t *p, uint8_t len) {
       spd = (int16_t)constrain((int)spd, -255, 255);
       if (mid > 1) { sendNack(cmd, ERR_INVALID_PARAM); return; }
       setMotorSpeed(mid, spd);
+      sysState = RUNNING;
+      sendAck(cmd);
+      break;
+    }
+
+    case CMD_SET_SPEEDS: {
+      if (sysState < READY) { sendNack(cmd, ERR_WRONG_STATE); return; }
+      if (len < 4)          { sendNack(cmd, ERR_INVALID_PARAM); return; }
+      int16_t spd1 = (int16_t)((p[0] << 8) | p[1]);
+      int16_t spd2 = (int16_t)((p[2] << 8) | p[3]);
+      spd1 = (int16_t)constrain((int)spd1, -255, 255);
+      spd2 = (int16_t)constrain((int)spd2, -255, 255);
+      setMotorSpeed(0, spd1);
+      setMotorSpeed(1, spd2);
       sysState = RUNNING;
       sendAck(cmd);
       break;
