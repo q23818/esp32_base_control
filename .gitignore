@@ -1,1 +1,16 @@
 .idea
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 固件与二进制文件（量产固件建议通过 GitHub Release 发布，而非直接塞进源码仓库）
+tools/firmware/*.bin
+
+# Arduino 编译临时目录
+build/
+.build/
+
+.gitignore~
+..gitignore.un~
+*.un~
+*~
