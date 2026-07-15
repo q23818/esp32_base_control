@@ -8,10 +8,12 @@ import time
 import struct
 import sys
 import termios
+import argparse
 
 # ── 配置 ──────────────────────────────────────────────
-PORT     = "/dev/ttyS1"
-BAUD     = 115200
+#PORT     = "/dev/cu.usbmodem11301"
+#PORT     = "/dev/ttyS1"
+#BAUD     = 115200
 TIMEOUT  = 1.0   # 秒
 
 # ── 命令/响应字 ───────────────────────────────────────
@@ -390,6 +392,16 @@ def test_reset(ser, t):
 # ── 主程序 ───────────────────────────────────────────
 
 def main():
+
+    # 动态构建参数解析器
+    parser = argparse.ArgumentParser(description="ESP32-C3 电机控制器 UART 协议全面测试")
+    parser.add_argument("port", type=str, help="物理设备串口路径 (如 Mac 下的 /dev/cu.usbmodem11101)")
+    parser.add_argument("--baud", type=int, default=115200, help="通讯波特率 (默认: 115200)")
+    args = parser.parse_args()
+
+    PORT = args.port
+    BAUD = args.baud
+
     print("="*50)
     print("  ESP32-C3 电机控制器 UART 协议全面测试")
     print(f"  端口: {PORT}  波特率: {BAUD}")
@@ -419,10 +431,16 @@ def main():
         test_unknown_cmd(ser, t)
         test_reset(ser, t)
     finally:
-        # 确保测试结束后电机停止
+        # 确保测试结束后电机停止且清除缓冲区：退出前将底盘控制状态机复位，防止电机持续空转
         try:
-            if ser.is_open:
+            # 在关闭串口前，发送复位信号，确保底盘恢复状态
+            # if ser.is_open:
+            if 'ser' in locals() and ser.is_open:
                 ser.write(build_frame(CMD_RESET))
+                time.sleep(0.05) # 给硬件极短的重置反应时间
+                ser.reset_input_buffer()
+                ser.reset_output_buffer()
+
         except Exception:
             pass  # 串口已断开，忽略错误
         finally:
