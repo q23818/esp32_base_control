@@ -16,7 +16,7 @@
   - 变量值：`dl.espressif.com/github_assets`
 - **macOS / Linux**: 在终端配置文件（如 `~/.zshrc` 或 `~/.bash_profile`）中追加：
   ```bash
-  export IDF_GITHUB_ASSETS="[dl.espressif.com/github_assets](https://dl.espressif.com/github_assets)"
+  export IDF_GITHUB_ASSETS="https://dl.espressif.com/github_assets"
   ```
 
 
@@ -24,11 +24,9 @@
 
 1. 打开 Arduino IDE，进入 `Preferences` (偏好设置)。
 2. 在 `Additional boards manager URLs` 中填入国内第三方加速索引源：
-```text
-[https://arduino.me/packages/esp32.json](https://arduino.me/packages/esp32.json)
-
-```
-
+    ```text
+    https://arduino.me/packages/esp32.json
+    ```
 3. 进入 `Boards Manager` (开发板管理器)，搜索 `esp32` 并安装由 **Espressif Systems** 发布的开发板核心库。
 
 
@@ -55,7 +53,6 @@
 
 ```bash
 pip3 install esptool
-
 ```
 
 ### 3. 启动批量烧录系统
@@ -65,7 +62,6 @@ pip3 install esptool
 ```bash
 cd tools
 python3 batch_burner.py
-
 ```
 
 ### 4. 流水线实操规程
@@ -84,7 +80,6 @@ python3 batch_burner.py
 确保本地安装了 Python 串口通信组件：
 ```bash
 pip3 install pyserial
-
 ```
 
 ### 2. 查找当前主控板的正确串口号
@@ -92,9 +87,8 @@ pip3 install pyserial
 把已经成功烧录好固件的 ESP32 底盘通过数据线连上 Mac/Linux。在终端确认它的端口（假设依然是刚才的通用端口）：
 ```bash
 ls /dev/cu.usb*
-
 ```
-假设获取到的端口号是：/dev/cu.usbmodem11101
+假设获取到的端口号是：`/dev/cu.usbmodemXXXX`
 
 
 ### 3. 一键运行自动化品检
@@ -102,8 +96,7 @@ ls /dev/cu.usb*
 无需修改脚本源码，直接通过命令行传入当前板子在 Mac/Linux 下分配的动态串口路径：
 
 ```bash
-python3 tests/test_uart.py /dev/cu.usbmodem11101
-
+python3 tests/test_uart.py /dev/cu.usbmodemXXXX
 ```
 
 *注：串口路径为必填参数。波特率默认对齐底盘源码的 `115200`。如需修改，可追加参数如 `--baud 9600`。*
@@ -127,7 +120,6 @@ python3 tests/test_uart.py /dev/cu.usbmodem11101
 
 ```bash
 pip3 install pyserial
-
 ```
 
 ### 2. 启动联动质检流水线
@@ -136,7 +128,6 @@ pip3 install pyserial
 
 ```bash
 python3 tools/batch_burner.py --test
-
 ```
 
 ### 3. 联动流水线 SOP 规范
@@ -144,8 +135,8 @@ python3 tools/batch_burner.py --test
 1. **插入新设备**：脚本自动捕获串口，并以最高稳定波特率（`921600`）执行固件烧录。
 2. **自动质检**：固件部署成功后，系统在原地等待 1 秒钟（等待硬件冷启动），随后**自动无缝调用** `tests/test_uart.py` 进行 26 项高精度串口通信与传感器状态校验。
 3. **出厂判定**：
-* 若 26/26 项测试全部显示绿色 `[PASS]`，底盘合格。
-* 若出现红色 `[FAIL]` 或串口中断，请重点排查底盘供电、编码器物理接线或芯片损坏。
+    * 若 26/26 项测试全部显示绿色 `[PASS]`，底盘合格。
+    * 若出现红色 `[FAIL]` 或串口中断，请重点排查底盘供电、编码器物理接线或芯片损坏。
 4. **换板**：拔掉当前设备，接入下一块，系统自动进入下一轮“烧录+质检”循环。
 
 ---
